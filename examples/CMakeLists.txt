@@ -195,3 +195,21 @@ target_include_directories(loftr
   PUBLIC
     ${OpenCV_INCLUDE_DIRS}
 )
+
+# ---------------------------------------------------------
+add_executable(aspanformer
+  ${CMAKE_CURRENT_LIST_DIR}/ASpanFormer.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/ASpanFormerApp.cpp
+)
+
+target_link_libraries(aspanformer
+  PUBLIC
+    ${PROJECT_NAME}
+    ${OpenCV_LIBS}
+)
+
+target_include_directories(aspanformer
+  PUBLIC
+    ${OpenCV_INCLUDE_DIRS}
+)
+# ---------------------------------------------------------

@@ -416,7 +416,39 @@ python3 scripts/loftr/convert_to_onnx.py --model_path /path/to/indoor_ds_new.ckp
 - Test inference apps
 
 ```bash
-./build/examples/loftr /path/to/loftr.onnx /path/to/loftr.onnx /path/to/1st/image /path/to/2nd/image
+./build/examples/loftr /path/to/loftr.onnx /path/to/1st/image /path/to/2nd/image
+```
+
+</details>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+### [ASpanformer](https://github.com/apple/ml-aspanformer)
+
+---
+
+<p align="center" width="100%">
+    <img width="100%" src="docs/images/aspanformer.jpg">
+</p>
+
+<details>
+<summary>Usage</summary>
+
+- Download [ASpanformer](https://github.com/apple/ml-aspanformer) weights outdoor.ckpt/indoor.ckpg from [HERE](https://drive.google.com/file/d/1eavM9dTkw9nbc-JqlVVfGPU5UvTTfc6k/view). 
+- Convert ASpanformer's pretrained weights to onnx format
+
+```bash
+git submodule update --init --recursive
+python3 -m pip install -r scripts/aspanformer/requirements.txt
+python3 scripts/aspanformer/convert_to_onnx.py --model_path /path/to/weight/indoor_or_outdoor.ckpt
+```
+
+- Download test images from [this dataset](https://github.com/StaRainJ/Multi-modality-image-matching-database-metrics-methods): Or prepare some pairs of your own images
+
+- Test inference apps
+
+```bash
+./build/examples/loftr /path/to/aspanformer.onnx /path/to/1st/image /path/to/2nd/image
 ```
 
 </details>

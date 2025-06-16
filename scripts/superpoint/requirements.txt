@@ -1,2 +1,0 @@
-opencv-python
-torch>=0.4

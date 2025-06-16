@@ -3,3 +3,4 @@ onnx==1.13.1
 onnxruntime
 einops==0.3.0
 yacs>=0.1.8
+torchvision

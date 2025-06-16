@@ -7,3 +7,6 @@
 [submodule "scripts/loftr/LoFTR"]
 	path = scripts/loftr/LoFTR
 	url = https://github.com/xmba15/LoFTR
+[submodule "scripts/aspanformer/aspanformer"]
+	path = scripts/aspanformer/aspanformer
+	url = https://github.com/eunseon02/ml-aspanformer.git
