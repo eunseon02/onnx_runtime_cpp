@@ -180,6 +180,24 @@ target_include_directories(super_glue
 
 # ---------------------------------------------------------
 
+add_executable(light_glue
+  ${CMAKE_CURRENT_LIST_DIR}/SuperPoint.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/LightGlueApp.cpp
+)
+
+target_link_libraries(light_glue
+  PUBLIC
+    ${PROJECT_NAME}
+    ${OpenCV_LIBS}
+)
+
+target_include_directories(light_glue
+  PUBLIC
+    ${OpenCV_INCLUDE_DIRS}
+)
+
+# ---------------------------------------------------------
+
 add_executable(loftr
   ${CMAKE_CURRENT_LIST_DIR}/LoFTR.cpp
   ${CMAKE_CURRENT_LIST_DIR}/LoFTRApp.cpp

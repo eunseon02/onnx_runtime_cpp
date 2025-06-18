@@ -32,7 +32,7 @@ def main():
         data[f"scores{i}"] = torch.randn(batch_size, num_keypoints)
         data[f"keypoints{i}"] = torch.randn(batch_size, num_keypoints, 2)
         data[f"descriptors{i}"] = torch.randn(batch_size, 256, num_keypoints)
-
+    print(list(data.keys()))
     torch.onnx.export(
         model,
         data,
