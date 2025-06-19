@@ -82,7 +82,16 @@ class LightGlueWrapper(LightGlue):
         c = max(m, n)
         do_compile = self.static_lengths and c <= max(self.static_lengths)
         if do_compile:
-            kn = min([k for k in self.static_lengths if k >= c])
+            # kn = min([k for k in self.static_lengths if k >= c])
+            kn = None
+            for k in self.static_lengths:
+                if k >= c:
+                    kn = k
+                    break       
+            if kn is None:
+                kn = max(self.static_lengths)
+
+
             desc0, mask0 = pad_to_length(desc0, kn)
             desc1, mask1 = pad_to_length(desc1, kn)
             kpts0, _ = pad_to_length(kpts0, kn)
