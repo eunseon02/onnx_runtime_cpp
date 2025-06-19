@@ -7,7 +7,7 @@ from LightGlue.lightglue.lightglue_onnx import (
     normalize_keypoints,
 )
 
-
+from torch.onnx.operators import shape_as_tensor
 
 class LightGlueWrapper(LightGlue):
     default_conf = {
@@ -105,8 +105,8 @@ class LightGlueWrapper(LightGlue):
             prune1 = torch.ones_like(ind1)
         token0, token1 = None, None
         for i in range(self.conf.n_layers):
-            if desc0.shape[1] == 0 or desc1.shape[1] == 0:  # no keypoints
-                break
+            # if desc0.shape[1] == 0 or desc1.shape[1] == 0:  # no keypoints
+            #     break
 
             desc0, desc1 = self.transformers[i](
                 desc0, desc1, encoding0, encoding1, mask0=mask0, mask1=mask1
@@ -135,25 +135,44 @@ class LightGlueWrapper(LightGlue):
                 encoding1 = encoding1.index_select(-2, keep1)
                 prune1[:, ind1] += 1
                 
-        if desc0.shape[1] == 0 or desc1.shape[1] == 0:  # no keypoints
-            m0 = desc0.new_full((b, m), -1, dtype=torch.long)
-            m1 = desc1.new_full((b, n), -1, dtype=torch.long)
-            mscores0 = desc0.new_zeros((b, m))
-            mscores1 = desc1.new_zeros((b, n))
-            matches = desc0.new_empty((b, 0, 2), dtype=torch.long)
-            mscores = desc0.new_empty((b, 0))
-            if not do_point_pruning:
-                prune0 = torch.ones_like(mscores0) * self.conf.n_layers
-                prune1 = torch.ones_like(mscores1) * self.conf.n_layers
-            return {
-                "matches0": m0,
-                "matches1": m1,
-                "matching_scores0": mscores0,
-                "matching_scores1": mscores1,
-                "prune0": prune0,
-                "prune1": prune1,
-            }
+        # if desc0.shape[1] == 0 or desc1.shape[1] == 0:  # no keypoints
+        #     m0 = desc0.new_full((b, m), -1, dtype=torch.long)
+        #     m1 = desc1.new_full((b, n), -1, dtype=torch.long)
+        #     mscores0 = desc0.new_zeros((b, m))
+        #     mscores1 = desc1.new_zeros((b, n))
+        #     matches = desc0.new_empty((b, 0, 2), dtype=torch.long)
+        #     mscores = desc0.new_empty((b, 0))
+        #     if not do_point_pruning:
+        #         prune0 = torch.ones_like(mscores0) * self.conf.n_layers
+        #         prune1 = torch.ones_like(mscores1) * self.conf.n_layers
+        #     return {
+        #         "matches0": m0,
+        #         "matches1": m1,
+        #         "matching_scores0": mscores0,
+        #         "matching_scores1": mscores1,
+        #         "prune0": prune0,
+        #         "prune1": prune1,
+        #     }
 
+
+
+        # Case1 : If we have no keypoints, return empty matches.
+        empty_m0 = desc0.new_full((b, m), -1, dtype=torch.long)
+        empty_m1 = desc1.new_full((b, n), -1, dtype=torch.long)
+        empty_ms0 = desc0.new_zeros((b, m))
+        empty_ms1 = desc1.new_zeros((b, n))
+        empty_matches = desc0.new_empty((b, 0, 2), dtype=torch.long)
+        empty_mscores = desc0.new_empty((b, 0))
+        if not do_point_pruning:
+            empty_prune0 = torch.ones_like(mscores0) * self.conf.n_layers
+            empty_prune1 = torch.ones_like(mscores1) * self.conf.n_layers
+        else:
+            nl = self.conf.n_layers
+            empty_prune0 = desc0.new_ones((b, m), dtype=torch.long) * nl
+            empty_prune1 = desc1.new_ones((b, n), dtype=torch.long) * nl
+  
+
+        # Case2 : If we have keypoints, compute matches.
         desc0, desc1 = desc0[..., :m, :], desc1[..., :n, :]  # remove padding
         scores, _ = self.log_assignment[i](desc0, desc1)
         m0, m1, mscores0, mscores1 = filter_matches(scores, self.conf.filter_threshold)
@@ -168,6 +187,8 @@ class LightGlueWrapper(LightGlue):
                 m_indices_1 = ind1[k, m_indices_1]
             matches.append(torch.stack([m_indices_0, m_indices_1], -1))
             mscores.append(mscores0[k][valid])
+
+
         
         # TODO: Remove when hloc switches to the compact format.
         if do_point_pruning:
@@ -183,6 +204,26 @@ class LightGlueWrapper(LightGlue):
         else:
             prune0 = torch.ones_like(mscores0) * self.conf.n_layers
             prune1 = torch.ones_like(mscores1) * self.conf.n_layers
+        
+        # Select Case1 or Case2
+        b = desc0.size(0)
+        shape0 = shape_as_tensor(desc0)
+        shape1 = shape_as_tensor(desc1)
+        m_dim  = shape0[1]  
+        n_dim  = shape1[1]
+
+        empty0 = torch.eq(m_dim, 0)
+        empty1 = torch.eq(n_dim, 0)
+        empty_flag = torch.logical_or(empty0, empty1)
+        is_empty = empty_flag.unsqueeze(0).expand(b).unsqueeze(1)
+
+
+        m0 = torch.where(is_empty, empty_m0, m0)
+        m1 = torch.where(is_empty, empty_m1, m1)
+        mscores0  = torch.where(is_empty, empty_ms0, mscores0)
+        mscores1  = torch.where(is_empty, empty_ms1, mscores1)
+        prune0   = torch.where(is_empty, empty_prune0, prune0)
+        prune1   = torch.where(is_empty, empty_prune1, prune1)
 
         # for k in data:
         #     print(f"{k}: {data[k].shape}")

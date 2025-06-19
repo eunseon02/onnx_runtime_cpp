@@ -33,8 +33,7 @@ def main():
 
     # Extract features
     feats0 = extractor.extract(image0.to(device))
-    feats1 = extractor.extract(image1.to(device))
-
+    feats1 = extractor.extract(image1.to(device)) # 'keypoints', 'keypoint_scores', 'descriptors', 'image_size'
     # Match features
     matches01 = matcher({"image0": feats0, "image1": feats1})
 
@@ -45,7 +44,6 @@ def main():
     kpts0, kpts1 = feats0["keypoints"], feats1["keypoints"]
     matches = matches01["matches"]
     m_kpts0, m_kpts1 = kpts0[matches[..., 0]], kpts1[matches[..., 1]]
-    print("out", m_kpts0.shape, m_kpts1.shape)
 
     # Visualize matches
     axes = viz2d.plot_images([image0, image1])
