@@ -1,5 +1,6 @@
 import torch
-from LightGlue.lightglue.lightglue import (
+
+from LightGlue.lightglue.lightglue_onnx import (
     LightGlue,
     pad_to_length,
     filter_matches,
@@ -31,17 +32,21 @@ class LightGlueWrapper(LightGlue):
     def forward(
         self,
         image0,
+        image_size0,
         keypoints0,
         descriptors0,
         image1,
+        image_size1,
         keypoints1,
         descriptors1,
     ):
         data = {
             "image0": image0,
+            "image_size0": image_size0,
             "keypoints0": keypoints0,
             "descriptors0": descriptors0,
             "image1": image1,
+            "image_size1": image_size1,
             "keypoints1": keypoints1,
             "descriptors1": descriptors1,
         }
@@ -51,9 +56,9 @@ class LightGlueWrapper(LightGlue):
         b, m, _ = kpts0.shape
         b, n, _ = kpts1.shape
         device = kpts0.device
-        # size0, size1 = data.get["imaage_size0"], data.get["image_size1"]
-        kpts0 = normalize_keypoints(kpts0).clone()
-        kpts1 = normalize_keypoints(kpts1).clone()
+        size0, size1 = data.get("imaage_size0"), data.get("image_size1")
+        kpts0 = normalize_keypoints(kpts0, size0).clone()
+        kpts1 = normalize_keypoints(kpts1, size1).clone()
 
         # if self.conf.add_scale_ori:
         #     kpts0 = torch.cat(
@@ -100,10 +105,9 @@ class LightGlueWrapper(LightGlue):
             prune1 = torch.ones_like(ind1)
         token0, token1 = None, None
         for i in range(self.conf.n_layers):
-            print(f"{i}-1")
             if desc0.shape[1] == 0 or desc1.shape[1] == 0:  # no keypoints
-                print(f"{i}-2")
                 break
+
             desc0, desc1 = self.transformers[i](
                 desc0, desc1, encoding0, encoding1, mask0=mask0, mask1=mask1
             )
@@ -130,6 +134,7 @@ class LightGlueWrapper(LightGlue):
                 desc1 = desc1.index_select(1, keep1)
                 encoding1 = encoding1.index_select(-2, keep1)
                 prune1[:, ind1] += 1
+                
         if desc0.shape[1] == 0 or desc1.shape[1] == 0:  # no keypoints
             m0 = desc0.new_full((b, m), -1, dtype=torch.long)
             m1 = desc1.new_full((b, n), -1, dtype=torch.long)
@@ -179,8 +184,8 @@ class LightGlueWrapper(LightGlue):
             prune0 = torch.ones_like(mscores0) * self.conf.n_layers
             prune1 = torch.ones_like(mscores1) * self.conf.n_layers
 
-        for k in data:
-            print(f"{k}: {data[k].shape}")
+        # for k in data:
+        #     print(f"{k}: {data[k].shape}")
         # print("prune0", prune0.shape, "prune1",prune1.shape)
 
         return {
