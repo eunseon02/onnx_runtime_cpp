@@ -76,6 +76,11 @@
         "valarray": "cpp",
         "variant": "cpp",
         "bit": "cpp",
-        "charconv": "cpp"
+        "charconv": "cpp",
+        "*.expression": "cpp",
+        "alignedvector3": "cpp",
+        "fft": "cpp",
+        "span": "cpp",
+        "string_span": "cpp"
     }
 }

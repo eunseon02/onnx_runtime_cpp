@@ -29,6 +29,17 @@ foreach(EXAMPLE ${EXAMPLES})
   )
 endforeach(EXAMPLE)
 
+
+set(ONNXRUNTIME_ROOTDIR "/usr/local")
+
+set(ONNXRUNTIME_INCLUDE
+    "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime/core/session"
+)
+
+set(ONNXRUNTIME_LIBDIR
+    "${ONNXRUNTIME_ROOTDIR}/lib"
+)
+
 # ---------------------------------------------------------
 
 add_executable(tiny_yolo_v2
@@ -181,19 +192,25 @@ target_include_directories(super_glue
 # ---------------------------------------------------------
 
 add_executable(light_glue
-  ${CMAKE_CURRENT_LIST_DIR}/SuperPoint.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/LightGlueApp.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/LightGlue.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/LightGlueDecoupleOnnxRunner.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/LightGlueOnnxRunner.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/transform.cpp
 )
 
 target_link_libraries(light_glue
   PUBLIC
     ${PROJECT_NAME}
     ${OpenCV_LIBS}
+    onnxruntime
+    jpeg
+    png
 )
 
 target_include_directories(light_glue
   PUBLIC
-    ${OpenCV_INCLUDE_DIRS}
+    ${ONNXRUNTIME_INCLUDE}
+    include
 )
 
 # ---------------------------------------------------------

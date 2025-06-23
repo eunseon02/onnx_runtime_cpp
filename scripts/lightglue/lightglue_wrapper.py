@@ -31,32 +31,35 @@ class LightGlueWrapper(LightGlue):
 
     def forward(
         self,
-        image0,
-        image_size0,
-        keypoints0,
-        descriptors0,
-        image1,
-        image_size1,
-        keypoints1,
-        descriptors1,
+        image_size0: torch.Tensor,
+        keypoints0: torch.Tensor,
+        descriptors0: torch.Tensor,
+        image_size1: torch.Tensor,
+        keypoints1: torch.Tensor,
+        descriptors1: torch.Tensor,
     ):
         data = {
-            "image0": image0,
-            "image_size0": image_size0,
+            # "image0": image0,
+            "image_size0": image_size0.to(torch.int64),
             "keypoints0": keypoints0,
             "descriptors0": descriptors0,
-            "image1": image1,
-            "image_size1": image_size1,
+            # "image1": image1,
+            "image_size1": image_size1.to(torch.int64),
             "keypoints1": keypoints1,
             "descriptors1": descriptors1,
         }
         """Run LightGlue on a pair of keypoints and descriptors"""
 
         kpts0, kpts1 = data["keypoints0"], data["keypoints1"]
-        b, m, _ = kpts0.shape
-        b, n, _ = kpts1.shape
+        # b, m, _ = kpts0.shape
+        # b, n, _ = kpts1.shape
+        b = kpts0.size(0)
+        m = kpts0.size(1)
+        n = kpts1.size(1)
+        nl = self.conf.n_layers 
+
         device = kpts0.device
-        size0, size1 = data.get("imaage_size0"), data.get("image_size1")
+        size0, size1 = data.get("image_size0"), data.get("image_size1")
         kpts0 = normalize_keypoints(kpts0, size0).clone()
         kpts1 = normalize_keypoints(kpts1, size1).clone()
 
@@ -79,7 +82,10 @@ class LightGlueWrapper(LightGlue):
         #     desc1 = desc1.half()
 
         mask0, mask1 = None, None
-        c = max(m, n)
+        # m = int(desc0.size(1))
+        # n = int(desc1.size(1))
+        c = m if m > n else n
+
         do_compile = self.static_lengths and c <= max(self.static_lengths)
         if do_compile:
             kn = min([k for k in self.static_lengths if k >= c])
@@ -118,42 +124,77 @@ class LightGlueWrapper(LightGlue):
                 token0, token1 = self.token_confidence[i](desc0, desc1)
                 if self.check_if_stop(token0[..., :m], token1[..., :n], i, m + n):
                     break
-            if do_point_pruning and desc0.shape[-2] > pruning_th:
-                scores0 = self.log_assignment[i].get_matchability(desc0)
-                prunemask0 = self.get_pruning_mask(token0, scores0, i)
-                keep0 = torch.where(prunemask0)[1]
-                ind0 = ind0.index_select(1, keep0)
-                desc0 = desc0.index_select(1, keep0)
-                encoding0 = encoding0.index_select(-2, keep0)
-                prune0[:, ind0] += 1
-            if do_point_pruning and desc1.shape[-2] > pruning_th:
-                scores1 = self.log_assignment[i].get_matchability(desc1)
-                prunemask1 = self.get_pruning_mask(token1, scores1, i)
-                keep1 = torch.where(prunemask1)[1]
-                ind1 = ind1.index_select(1, keep1)
-                desc1 = desc1.index_select(1, keep1)
-                encoding1 = encoding1.index_select(-2, keep1)
-                prune1[:, ind1] += 1
-                
-        # if desc0.shape[1] == 0 or desc1.shape[1] == 0:  # no keypoints
-        #     m0 = desc0.new_full((b, m), -1, dtype=torch.long)
-        #     m1 = desc1.new_full((b, n), -1, dtype=torch.long)
-        #     mscores0 = desc0.new_zeros((b, m))
-        #     mscores1 = desc1.new_zeros((b, n))
-        #     matches = desc0.new_empty((b, 0, 2), dtype=torch.long)
-        #     mscores = desc0.new_empty((b, 0))
-        #     if not do_point_pruning:
-        #         prune0 = torch.ones_like(mscores0) * self.conf.n_layers
-        #         prune1 = torch.ones_like(mscores1) * self.conf.n_layers
-        #     return {
-        #         "matches0": m0,
-        #         "matches1": m1,
-        #         "matching_scores0": mscores0,
-        #         "matching_scores1": mscores1,
-        #         "prune0": prune0,
-        #         "prune1": prune1,
-        #     }
+            # if do_point_pruning and desc0.shape[-2] > pruning_th:
+            #     scores0 = self.log_assignment[i].get_matchability(desc0)
+            #     prunemask0 = self.get_pruning_mask(token0, scores0, i)
+            #     keep0 = torch.where(prunemask0)[1]
+            #     ind0 = ind0.index_select(1, keep0)
+            #     desc0 = desc0.index_select(1, keep0)
+            #     encoding0 = encoding0.index_select(-2, keep0)
+            #     prune0[:, ind0] += 1
+            # if do_point_pruning and desc1.shape[-2] > pruning_th:
+            #     scores1 = self.log_assignment[i].get_matchability(desc1)
+            #     prunemask1 = self.get_pruning_mask(token1, scores1, i)
+            #     keep1 = torch.where(prunemask1)[1]
+            #     ind1 = ind1.index_select(1, keep1)
+            #     desc1 = desc1.index_select(1, keep1)
+            #     encoding1 = encoding1.index_select(-2, keep1)
+            #     prune1[:, ind1] += 1
+            scores0    = self.log_assignment[i].get_matchability(desc0)  # [b, m]
+            prunemask0 = self.get_pruning_mask(token0, scores0, i)       # [b, m] bool
 
+            scores1    = self.log_assignment[i].get_matchability(desc1)  # [b, n]
+            prunemask1 = self.get_pruning_mask(token1, scores1, i)       # [b, n] bool
+
+            # 3) prune count 업데이트 (살아남은 포인트만 +1)
+            prune0 = prune0 + prunemask0.long()                          # [b, m]
+            prune1 = prune1 + prunemask1.long()                          # [b, n]
+
+            # 4) 실제 인덱스 추출 (NonZero → Gather)
+            # torch.where(prunemask0) → (coords, keep0), keep0=[b, k0]
+            keep0 = torch.where(prunemask0)  # tuple (batch_idx, kp_idx)
+            batch_idx0, kp_idx0 = keep0
+            # Gather를 쓰려면, idx tensor는 [b, k0] 형태여야 함
+            # batch 축마다 다른 개수라면 pad/gather_all 형태가 필요하지만,
+            # LightGlue는 batch independent이므로 아래와 같이 배치별 동작으로 가정:
+            keep0_flat = kp_idx0  # shape = [total_kept], we’ll use gather with batch offsets if needed
+
+            # 동일한 방식으로 desc1
+            keep1 = torch.where(prunemask1)
+            batch_idx1, kp_idx1 = keep1
+            keep1_flat = kp_idx1
+
+            # 5) Gather for desc / encoding / prune
+            #   reshape desc0: [b, m, D] → [b*m, D] , then index_select, reshape back
+            D0 = desc0.size(2)
+            desc0_flat = desc0.view(-1, D0)                             # [b*m, D0]
+            # linear index로 변환: idx = batch_idx * m + kp_idx
+            lin_idx0 = batch_idx0 * m + kp_idx0                         # [total_kept]
+            desc0 = desc0_flat.index_select(0, lin_idx0).view(b, -1, D0)  # [b, k0, D0]
+
+            # encoding0: 예를 들어 [b, T, m, C] 라면, 비슷하게 처리
+            T, C = encoding0.size(1), encoding0.size(-1)
+            enc0_flat = encoding0.permute(0, 2, 1, 3).contiguous().view(-1, T, C)  
+            # permute to [b, m, T, C] → flat [b*m, T, C]
+            encoding0 = enc0_flat.index_select(0, lin_idx0).view(b, -1, T, C).permute(0, 2, 1, 3)
+            # → back to [b, T, k0, C]
+
+            # prune0: [b, m] → flat [b*m] → gather → [b, k0]
+            prune0_flat = prune0.view(-1)
+            prune0 = prune0_flat.index_select(0, lin_idx0).view(b, -1)
+
+            # 6) 동일하게 desc1, encoding1, prune1 처리
+            D1 = desc1.size(2)
+            desc1_flat = desc1.view(-1, D1)
+            lin_idx1   = batch_idx1 * n + kp_idx1
+            desc1      = desc1_flat.index_select(0, lin_idx1).view(b, -1, D1)
+
+            T1, C1     = encoding1.size(1), encoding1.size(-1)
+            enc1_flat  = encoding1.permute(0, 2, 1, 3).contiguous().view(-1, T1, C1)
+            encoding1  = enc1_flat.index_select(0, lin_idx1).view(b, -1, T1, C1).permute(0, 2, 1, 3)
+
+            prune1_flat = prune1.view(-1)
+            prune1      = prune1_flat.index_select(0, lin_idx1).view(b, -1)     
 
 
         # Case1 : If we have no keypoints, return empty matches.

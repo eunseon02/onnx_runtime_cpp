@@ -98,7 +98,8 @@ int main(int argc, char* argv[])
         }
 
         transposeNDWrapper(superPointResults[i].second, {1, 0}, buffer);
-        std::copy(buffer.begin<float>(), buffer.end<float>(), std::back_inserter(descriptors[i]));
+        std::copy(buffer.begin<float>(), buffer.end<float>(), std::back_inserter(descriptors[i]));    std::vector<std::vector<float>> scores(2);
+
         buffer.release();
     }
     std::vector<Ort::OrtSessionHandler::DataOutputType> superGlueOrtOutput =

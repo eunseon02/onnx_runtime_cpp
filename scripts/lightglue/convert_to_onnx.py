@@ -29,30 +29,38 @@ def main():
     model.eval()
 
     batch_size = 1
-    height = 480
-    width = 640
-    num_keypoints = 382
+    height = 682
+    width = 1024
+    num_keypoints = 295
     data = {}
     for i in range(2):
-        data[f"image{i}"] = torch.randn(batch_size, 3, height, width)
+        data[f"image_size{i}"] = torch.tensor(
+            [[height, width]] * batch_size,
+            dtype=torch.float32
+        )
+        # data[f"image{i}"] = torch.randn(batch_size, 3, height, width)
         data[f"keypoints{i}"] = torch.randn(batch_size, num_keypoints, 2)
         # data[f"keypoint_scores{i}"] = torch.randn(batch_size, num_keypoints)
         data[f"descriptors{i}"] = torch.randn(batch_size, num_keypoints, 256)
 
-        data[f"image_size{i}"] = torch.tensor(
-            [[height, width]] * batch_size,
-        )
-
     # scripted = torch.jit.script(model)  
+    # example_args = (
+    #     torch.randn(1,1,480,640),  # image0
+    #     torch.tensor([[480,640]]), # image_size0
+    #     torch.randn(1,382,2),      # kpts0
+    #     torch.randn(1,382,256),    # desc0
+    #     torch.randn(1,1,480,640),  # image1
+    #     torch.tensor([[480,640]]), # image_size1
+    #     torch.randn(1,382,2),      # kpts1
+    #     torch.randn(1,382,256),    # desc1
+    # )
     example_args = (
-        torch.randn(1,1,480,640),  # image0
-        torch.tensor([[480,640]]), # image_size0
-        torch.randn(1,382,2),      # kpts0
-        torch.randn(1,382,256),    # desc0
-        torch.randn(1,1,480,640),  # image1
-        torch.tensor([[480,640]]), # image_size1
-        torch.randn(1,382,2),      # kpts1
-        torch.randn(1,382,256),    # desc1
+        data["image_size0"],  # torch.tensor([[382,256]]) → shape [1,2]
+        data["keypoints0"],   # torch.randn(1,N,2)
+        data["descriptors0"], # torch.randn(1,N,256)
+        data["image_size1"],
+        data["keypoints1"],
+        data["descriptors1"],
     )
 
         
@@ -64,7 +72,10 @@ def main():
         export_params=True,
         opset_version=15,
         do_constant_folding=True,
-        input_names=list(data.keys()),
+        input_names=[
+            "image_size0","keypoints0","descriptors0",
+            "image_size1","keypoints1","descriptors1"
+        ],
         output_names=["matches0", "matches1", "matching_scores0", "matching_scores1", "prune0", "prune1"],
         dynamic_axes={
             "keypoints0": {0: "batch_size", 1: "num_keypoints0"},

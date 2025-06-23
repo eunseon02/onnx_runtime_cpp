@@ -390,6 +390,40 @@ python3 scripts/superglue/convert_to_onnx.py
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+
+### [LightGlue](https://arxiv.org/pdf/2306.13643)
+
+---
+
+
+<p align="center" width="100%">
+    <img width="100%" src="docs/images/light_glue.jpg">
+</p>
+
+<details>
+<summary>Usage</summary>
+
+- Get SuperPoint + LightGlue's pretrained weights(onnx format)
+
+```bash
+sudo apt-get install wget
+cd onnv_rumtime_cpp
+wget https://github.com/fabio-sim/LightGlue-ONNX/releases/download/v1.0.0/superpoint_lightglue.trt.onnx
+wget https://github.com/fabio-sim/LightGlue-ONNX/releases/download/v1.0.0/superpoint.onnx
+
+```
+
+- Test inference apps
+
+```bash
+./build/examples/light_glue
+```
+
+</details>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
 ### [LoFTR](https://zju3dv.github.io/loftr/)
 
 ---

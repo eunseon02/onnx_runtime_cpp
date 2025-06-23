@@ -64,46 +64,54 @@ int main(int argc, char* argv[])
     static const int DUMMY_NUM_KEYPOINTS = 256;
     Ort::OrtSessionHandler lightGlueOsh(SUPERGLUE_ONNX_MODEL_PATH, 0,
                                         std::vector<std::vector<int64_t>>{
-                                            {4},
-                                            {1, DUMMY_NUM_KEYPOINTS},
+                                            {1, 2},
+                                            // {1, DUMMY_NUM_KEYPOINTS},
                                             {1, DUMMY_NUM_KEYPOINTS, 2},
-                                            {1, 256, DUMMY_NUM_KEYPOINTS},
-                                            {4},
-                                            {1, DUMMY_NUM_KEYPOINTS},
+                                            {1, DUMMY_NUM_KEYPOINTS, 256},
+                                            {1, 2},
+                                            // {1, DUMMY_NUM_KEYPOINTS},
                                             {1, DUMMY_NUM_KEYPOINTS, 2},
-                                            {1, 256, DUMMY_NUM_KEYPOINTS},
+                                            {1, DUMMY_NUM_KEYPOINTS, 256},
                                         });
 
     int numKeypoints0 = superPointResults[0].first.size();
     int numKeypoints1 = superPointResults[1].first.size();
+    std::cout << " detected keypoints: " << numKeypoints0 << std::endl;
     std::vector<std::vector<int64_t>> inputShapes = {
-        {4}, {1, numKeypoints0}, {1, numKeypoints0, 2}, {1, 256, numKeypoints0},
-        {4}, {1, numKeypoints1}, {1, numKeypoints1, 2}, {1, 256, numKeypoints1},
+        {1, 2}, {1, numKeypoints0, 2}, {1, numKeypoints0, 256},
+        {1, 2}, {1, numKeypoints1, 2}, {1, numKeypoints1, 256},
     };
     lightGlueOsh.updateInputShapes(inputShapes);
 
     std::vector<std::vector<float>> imageShapes(2);
-    std::vector<std::vector<float>> scores(2);
     std::vector<std::vector<float>> keypoints(2);
     std::vector<std::vector<float>> descriptors(2);
 
     cv::Mat buffer;
     for (int i = 0; i < 2; ++i) {
-        imageShapes[i] = {1, 1, static_cast<float>(images[0].rows), static_cast<float>(images[0].cols)};
-        std::transform(superPointResults[i].first.begin(), superPointResults[i].first.end(),
-                       std::back_inserter(scores[i]), [](const cv::KeyPoint& keypoint) { return keypoint.response; });
+        imageShapes[i] = {
+            static_cast<float>(images[i].rows),  // height
+            static_cast<float>(images[i].cols)   // width
+        };
         for (const auto& k : superPointResults[i].first) {
             keypoints[i].emplace_back(k.pt.y);
             keypoints[i].emplace_back(k.pt.x);
         }
 
-        transposeNDWrapper(superPointResults[i].second, {1, 0}, buffer);
-        std::copy(buffer.begin<float>(), buffer.end<float>(), std::back_inserter(descriptors[i]));
-        buffer.release();
+    {
+        cv::Mat raw = superPointResults[i].second;
+
+        std::vector<float>& desc = descriptors[i];
+        desc.clear();
+        desc.reserve(raw.total());  // numKeypoints * 256
+
+        const float* dataPtr = raw.ptr<float>(0);
+        desc.insert(desc.end(), dataPtr, dataPtr + raw.total());
+    }        
     }
     std::vector<Ort::OrtSessionHandler::DataOutputType> superGlueOrtOutput =
-        lightGlueOsh({imageShapes[0].data(), scores[0].data(), keypoints[0].data(), descriptors[0].data(),
-                      imageShapes[1].data(), scores[1].data(), keypoints[1].data(), descriptors[1].data()});
+        lightGlueOsh({imageShapes[0].data(), keypoints[0].data(), descriptors[0].data(),
+                      imageShapes[1].data(), keypoints[1].data(), descriptors[1].data()});
 
     // match keypoints 0 to keypoints 1
     std::vector<int64_t> matchIndices(reinterpret_cast<int64_t*>(superGlueOrtOutput[0].first),
