@@ -38,7 +38,7 @@ def main():
         data,
         "super_glue.onnx",
         export_params=True,
-        opset_version=12,
+        opset_version=17,
         do_constant_folding=True,
         input_names=list(data.keys()),
         output_names=["matches0", "matches1", "matching_scores0", "matching_scores1"],

@@ -70,7 +70,7 @@ def main():
         example_args,
         "light_glue.onnx",
         export_params=True,
-        opset_version=15,
+        opset_version=21,
         do_constant_folding=True,
         input_names=[
             "image_size0","keypoints0","descriptors0",
