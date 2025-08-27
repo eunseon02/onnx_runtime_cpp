@@ -422,6 +422,42 @@ wget https://github.com/fabio-sim/LightGlue-ONNX/releases/download/v1.0.0/superp
 </details>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+### [XFeat](https://github.com/verlab/accelerated_features)
+
+---
+
+<p align="center" width="100%">
+    <img width="100%" src="docs/images/xfeat.jpg">
+</p>
+
+<details>
+<summary>Usage</summary>
+
+
+- Convert LoFTR's pretrained weights to onnx format
+
+```bash
+git submodule update --init --recursive
+cd scripts/xfeat/XFeat && python3 export.py --xfeat_path ../../../xfeat.pt --top_k 4096 --dynamic
+```
+
+- Download test images from [this dataset](https://github.com/StaRainJ/Multi-modality-image-matching-database-metrics-methods): Or prepare some pairs of your own images
+
+- Test inference apps
+
+```bash
+./build/examples/loftr /path/to/loftr.onnx /path/to/1st/image /path/to/2nd/image
+```
+
+</details>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+
+
+
+
 
 
 ### [LoFTR](https://zju3dv.github.io/loftr/)
