@@ -10,3 +10,10 @@
 [submodule "scripts/aspanformer/aspanformer"]
 	path = scripts/aspanformer/aspanformer
 	url = https://github.com/eunseon02/ml-aspanformer.git
+[submodule "scripts/lightglue/LightGlue"]
+	path = scripts/lightglue/LightGlue
+	url = https://github.com/eunseon02/LightGlue.git
+	branch = onnx
+[submodule "scripts/xfeat/XFeat-ONNX"]
+	path = scripts/xfeat/XFeat-ONNX
+	url = https://github.com/DavideCatto/XFeat-ONNX.git
